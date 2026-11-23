@@ -174,6 +174,7 @@ std::any EvalVisitor::visitStmt(Python3Parser::StmtContext *ctx) {
 
 std::any EvalVisitor::visitSimple_stmt(Python3Parser::Simple_stmtContext *ctx) {
   auto small_stmt = ctx -> small_stmt();
+  // std::cout << "visiting simple : " << ctx -> getText() << "\n";
   return visit(small_stmt);
 }
 
@@ -216,9 +217,12 @@ void EvalVisitor::AugassignOnce(Python3Parser::TestlistContext *ctx, std::any ex
   } else {
     op = Augassign.substr(0, 1);
   }
+  // std::cout << "doing Augassign Once : " << ctx -> getText() << " " << op << " " << Augassign << "\n";
   if (ctx -> test().size() == 1) {
-    std::any oldval = GetVar(ctx -> test(0) -> getText());
-    SetVar(ctx -> test(0) -> getText(), calc(op, oldval, exprN));
+    // std::cout << std::any_cast<sjtu::int2048>(old_val[0]) << " " << std::any_cast<sjtu::int2048>(exprN) << "\n";
+    std::any new_val = calc(op, old_val[0], exprN);
+    SetVar(ctx -> test(0) -> getText(), new_val);
+    // std::cout <<"finished\n";
     return ;
   }
   std::vector<std::any> expr = std::any_cast<std::vector<std::any>>(exprN);
@@ -242,7 +246,8 @@ std::any EvalVisitor::visitExpr_stmt(Python3Parser::Expr_stmtContext *ctx) {
     }
     std::any exprN = (visit(ctx -> testlist(1)));
     AugassignOnce(ctx -> testlist(0), exprN, ctx -> augassign() -> getText(), olds);
-    return exprN;
+    // std::cout << "finished visiting : " << ctx -> getText() << "\n";
+    return std::any();
   } else {
     int num = ctx -> ASSIGN().size();
     if (num == 0) {
@@ -253,7 +258,7 @@ std::any EvalVisitor::visitExpr_stmt(Python3Parser::Expr_stmtContext *ctx) {
     for (int i = num - 1; i >= 0; i--) {
       AssignOnce(testlist[i], exprN);
     }
-    return exprN;
+    return std::any();
   }
 }
 
@@ -313,6 +318,7 @@ std::any EvalVisitor::visitNot_test(Python3Parser::Not_testContext *ctx) {
 std::any EvalVisitor::visitComparison(Python3Parser::ComparisonContext *ctx) {
   std::vector<Python3Parser::Arith_exprContext *> arith_expr = ctx -> arith_expr();
   std::vector<Python3Parser::Comp_opContext *> comp_op = ctx -> comp_op();
+  // std::cout << "visiting Comparison : " << ctx -> getText() << "\n";
   if (comp_op.size() == 0) {
     return visit(arith_expr[0]);
   }
@@ -513,4 +519,104 @@ std::any EvalVisitor::visitAtom(Python3Parser::AtomContext *ctx) {
     // std::cout << "finished with return : " << res << "\n";
     return res;
   }
+}
+
+std::any EvalVisitor::visitCompound_stmt(Python3Parser::Compound_stmtContext *ctx) {
+  if (ctx -> if_stmt()) {
+    return visit(ctx -> if_stmt());
+  }
+  if (ctx -> while_stmt()) {
+    return visit(ctx -> while_stmt());
+  }
+  if (ctx -> funcdef()) {
+    return visit(ctx -> funcdef());
+  }
+}
+
+std::any EvalVisitor::visitIf_stmt(Python3Parser::If_stmtContext *ctx) {
+  for (int i = 0; i < ctx -> test().size(); i++) {
+    if (ChangeToBool(visit(ctx -> test(i)))) {
+      return visit(ctx -> suite(i));
+    }
+  }
+  if (ctx -> ELSE()) {
+    return visit(ctx -> suite(ctx -> test().size()));
+  }
+}
+
+std::any EvalVisitor::visitWhile_stmt(Python3Parser::While_stmtContext *ctx) {
+  while(ChangeToBool(visit(ctx -> test()))) {
+    // std::cout << "whiling\n";
+    auto x = visit(ctx -> suite());
+    // std::cout << "here\n";
+    if (std::any_cast<Flow>(&x) != nullptr) {
+      Flow t = std::any_cast<Flow>(x);
+      if (t.Break) {
+        break;
+      }
+      if (t.Return) {
+        return t;
+      }
+    }
+    // std::cout << "nothing\n";
+    // std::cout << std::any_cast<sjtu::int2048>(GetVar("i")) << "\n";
+  }
+  return std::any();
+}
+
+std::any EvalVisitor::visitSuite(Python3Parser::SuiteContext *ctx) {
+  if (ctx -> simple_stmt()) {
+    return visit(ctx -> simple_stmt());
+  } else {
+    for (int i = 0; i < ctx -> stmt().size(); i++) {
+      // std::cout << "visiting suite" << ctx -> stmt(i) -> getText() << "\n";
+      auto x = visit(ctx -> stmt(i));
+      // std::cout << "finishing " << ctx -> getText() << "\n";
+      if (std::any_cast<Flow>(&x) != nullptr) {
+        Flow t = std::any_cast<Flow>(x);
+        return t;
+      }
+    }
+    return std::any();
+  }
+}
+
+std::any EvalVisitor::visitFlow_stmt(Python3Parser::Flow_stmtContext *ctx) {
+  if (ctx -> break_stmt()) {
+    return visit(ctx -> break_stmt());
+  }
+  if (ctx -> continue_stmt()) {
+    return visit(ctx -> continue_stmt());
+  }
+  if (ctx -> return_stmt()) {
+    return visit(ctx -> return_stmt());
+  }
+}
+
+std::any EvalVisitor::visitBreak_stmt(Python3Parser::Break_stmtContext *ctx) {
+  Flow t;
+  t.Break = 1;
+  t.Continue = 0;
+  t.Return = 0;
+  return t;
+}
+
+std::any EvalVisitor::visitContinue_stmt(Python3Parser::Continue_stmtContext *ctx) {
+  Flow t;
+  t.Break = 0;
+  t.Continue = 1;
+  t.Return = 0;
+  return t;
+}
+
+std::any EvalVisitor::visitReturn_stmt(Python3Parser::Return_stmtContext *ctx) {
+  Flow t;
+  t.Break = 0;
+  t.Continue = 0;
+  t.Return = 1;
+  if (ctx -> testlist()) {
+    t.val = visit(ctx -> testlist());
+  }
+  
+  return t;
 }

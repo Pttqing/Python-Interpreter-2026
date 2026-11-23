@@ -16,6 +16,11 @@ struct Argument {
   std::any value;
 };
 
+struct Flow {
+  bool Continue, Break, Return;
+  std::any val;
+};
+
 class EvalVisitor : public Python3ParserBaseVisitor {
 	// TODO: override all methods of Python3ParserBaseVisitor
 private:
@@ -63,41 +68,27 @@ public:
   //表达式语句：testlist + 复合赋值/连等/无
   virtual std::any visitExpr_stmt(Python3Parser::Expr_stmtContext *ctx) override;
 
-  virtual std::any visitAugassign(Python3Parser::AugassignContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  virtual std::any visitAugassign(Python3Parser::AugassignContext *ctx) override;
 
-  virtual std::any visitFlow_stmt(Python3Parser::Flow_stmtContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  //流语句
+  virtual std::any visitFlow_stmt(Python3Parser::Flow_stmtContext *ctx) override;
 
-  virtual std::any visitBreak_stmt(Python3Parser::Break_stmtContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  virtual std::any visitBreak_stmt(Python3Parser::Break_stmtContext *ctx) override;
 
-  virtual std::any visitContinue_stmt(Python3Parser::Continue_stmtContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  virtual std::any visitContinue_stmt(Python3Parser::Continue_stmtContext *ctx) override;
 
-  virtual std::any visitReturn_stmt(Python3Parser::Return_stmtContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  virtual std::any visitReturn_stmt(Python3Parser::Return_stmtContext *ctx) override;
 
-  virtual std::any visitCompound_stmt(Python3Parser::Compound_stmtContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  //if while funcdef
+  virtual std::any visitCompound_stmt(Python3Parser::Compound_stmtContext *ctx) override;
 
-  virtual std::any visitIf_stmt(Python3Parser::If_stmtContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  virtual std::any visitIf_stmt(Python3Parser::If_stmtContext *ctx) override;
 
-  virtual std::any visitWhile_stmt(Python3Parser::While_stmtContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  virtual std::any visitWhile_stmt(Python3Parser::While_stmtContext *ctx) override;
 
-  virtual std::any visitSuite(Python3Parser::SuiteContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  virtual std::any visitSuite(Python3Parser::SuiteContext *ctx) override;
+  
+
   //访问单个test 即or_test
   virtual std::any visitTest(Python3Parser::TestContext *ctx) override;
 

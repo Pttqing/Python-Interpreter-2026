@@ -173,3 +173,6 @@ CornerTest: 57 - 66, 72, 73
 如果你想看一个 demo 来理解这个作业，参考：[Apple Pie Interpreter](https://github.com/ACMClassCourse-2021/Apple-Pie-Interpreter)。
 
 还有一些 [小建议](docs/suggestions.md)。
+
+
+git push mine my-main:main
