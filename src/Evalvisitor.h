@@ -42,15 +42,15 @@ private:
   //函数表
   std::map<std::string, Function> def_function;
 
-  double ChangeToFloat(std::any x);
-  sjtu::int2048 ChangeToInt(std::any x);
-  bool ChangeToBool(std::any x);
-  std::string ChangeToStr(std::any x);
-  std::any calc(std::string s, std::any x, std::any y);
-  void SetVar(std::string name, std::any val);
-  std::any GetVar(std::string name);
-  void AssignOnce(Python3Parser::TestlistContext *ctx, std::any exprN);
-  void AugassignOnce(Python3Parser::TestlistContext *ctx, std::any exprN, std::string Augassign,  std::vector<std::any> old_val);
+  double ChangeToFloat(const std::any &x);
+  sjtu::int2048 ChangeToInt(const std::any &x);
+  bool ChangeToBool(const std::any &x);
+  std::string ChangeToStr(const std::any &x);
+  std::any calc(const std::string &s, const std::any &x, const std::any &y);
+  void SetVar(const std::string &name, const std::any &val);
+  std::any GetVar(const std::string &name);
+  void AssignOnce(Python3Parser::TestlistContext *ctx, const std::any &exprN);
+  void AugassignOnce(Python3Parser::TestlistContext *ctx, const std::any &exprN, const std::string &Augassign,  const std::vector<std::any> &old_val);
   char EscapeCharacter(char ch);
 public:
   EvalVisitor();

@@ -11,9 +11,10 @@ EvalVisitor::EvalVisitor() {
   std::map<std::string, std::any> mp;
   mp.clear();
   variables.push_back(mp);
+  std::ios::sync_with_stdio(false);
 }
 
-double EvalVisitor::ChangeToFloat(std::any x) {
+double EvalVisitor::ChangeToFloat(const std::any &x) {
   if (std::any_cast<std::string>(&x) != nullptr) {
     return std::stod(std::any_cast<std::string>(x));
   }
@@ -31,7 +32,7 @@ double EvalVisitor::ChangeToFloat(std::any x) {
   return 0;
 }
 
-sjtu::int2048 EvalVisitor::ChangeToInt(std::any x) {
+sjtu::int2048 EvalVisitor::ChangeToInt(const std::any &x) {
   if (std::any_cast<std::string>(&x) != nullptr) {
     sjtu::int2048 res(std::any_cast<std::string>(x));
     return res;
@@ -53,7 +54,7 @@ sjtu::int2048 EvalVisitor::ChangeToInt(std::any x) {
   return 0;
 }
 
-bool EvalVisitor::ChangeToBool(std::any x) {
+bool EvalVisitor::ChangeToBool(const std::any &x) {
   if (std::any_cast<none>(&x) != nullptr) {
     return false;
   }
@@ -75,7 +76,7 @@ bool EvalVisitor::ChangeToBool(std::any x) {
   return false;
 }
 
-std::string EvalVisitor::ChangeToStr(std::any x) {
+std::string EvalVisitor::ChangeToStr(const std::any &x) {
   if (std::any_cast<std::string>(&x) != nullptr) {
     return std::any_cast<std::string>(x);
   }
@@ -102,7 +103,7 @@ std::string EvalVisitor::ChangeToStr(std::any x) {
   return "";
 }
 
-std::any EvalVisitor::calc(std::string s, std::any x, std::any y) {
+std::any EvalVisitor::calc(const std::string &s, const std::any &x, const std::any &y) {
   if (s == "+") {
     if (std::any_cast<std::string>(&x) != nullptr) {
       return std::any_cast<std::string>(x) + std::any_cast<std::string>(y);
@@ -121,15 +122,22 @@ std::any EvalVisitor::calc(std::string s, std::any x, std::any y) {
   if (s == "*") {
     if (std::any_cast<std::string>(&x) != nullptr || std::any_cast<std::string>(&y) != nullptr) {
       if (std::any_cast<std::string>(&y) != nullptr) {
-        swap(x, y);
+        sjtu::int2048 t = ChangeToInt(x);
+        std::string res = "", a = std::any_cast<std::string>(y);
+        while (t > 0) {
+          res += a;
+          t -= 1;
+        }
+        return res;
+      } else {
+        sjtu::int2048 t = ChangeToInt(y);
+        std::string res = "", a = std::any_cast<std::string>(x);
+        while (t > 0) {
+          res += a;
+          t -= 1;
+        }
+        return res;
       }
-      sjtu::int2048 t = ChangeToInt(y);
-      std::string res = "", a = std::any_cast<std::string>(x);
-      while (t > 0) {
-        res += a;
-        t -= 1;
-      }
-      return res;
     }
     if (std::any_cast<double>(&x) != nullptr || std::any_cast<double>(&y) != nullptr) {
       return ChangeToFloat(x) * ChangeToFloat(y);
@@ -229,7 +237,7 @@ std::any EvalVisitor::visitSmall_stmt(Python3Parser::Small_stmtContext *ctx) {
   }
 }
 
-void EvalVisitor::SetVar(std::string name, std::any val) {
+void EvalVisitor::SetVar(const std::string &name, const std::any &val) {
   int sz = variables.size();
   if (variables[sz - 1].find(name) != variables[sz - 1].end()) {
     variables[sz - 1][name] = val;
@@ -240,7 +248,7 @@ void EvalVisitor::SetVar(std::string name, std::any val) {
   }
 }
 
-void EvalVisitor::AssignOnce(Python3Parser::TestlistContext *ctx, std::any exprN) {
+void EvalVisitor::AssignOnce(Python3Parser::TestlistContext *ctx, const std::any &exprN) {
   if (ctx -> test().size() == 1) {
     SetVar(ctx -> test(0) -> getText(), exprN);
     return ;
@@ -251,7 +259,7 @@ void EvalVisitor::AssignOnce(Python3Parser::TestlistContext *ctx, std::any exprN
   }
 }
 
-void EvalVisitor::AugassignOnce(Python3Parser::TestlistContext *ctx, std::any exprN, std::string Augassign, std::vector<std::any> old_val) {
+void EvalVisitor::AugassignOnce(Python3Parser::TestlistContext *ctx, const std::any &exprN, const std::string &Augassign, const std::vector<std::any> &old_val) {
   std::string op;
   if (Augassign.size() == 3) {
     op ="//";
@@ -511,7 +519,7 @@ std::any EvalVisitor::visitArgument(Python3Parser::ArgumentContext *ctx) {
   }
 }
 
-std::any EvalVisitor::GetVar(std::string name) {
+std::any EvalVisitor::GetVar(const std::string &name) {
   int sz = variables.size();
   if (variables[sz - 1].find(name) != variables[sz - 1].end()) {
     return variables[sz - 1][name];
