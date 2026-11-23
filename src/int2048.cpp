@@ -89,13 +89,11 @@ void int2048::print() {
 
 double int2048::ChangeToDouble() const {
     double res = 0;
-    long long base = 1;
-    for (int i = 0; i < val.size(); i++) {
-        res += val[i] * base;
-        base *= BASE;
+    for (int i = val.size() - 1; i >= 0; i--) {
+        res = res * BASE + val[i];
     }
     if (sign) {
-        res *= -1;
+        res = -res;
     }
     return res;
 }

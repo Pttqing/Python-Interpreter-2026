@@ -449,18 +449,18 @@ std::any EvalVisitor::visitAtom_expr(Python3Parser::Atom_exprContext *ctx) {
     }
     //自定义函数
     std::map<std::string, std::any> scope;
-    Function func = def_function[func_name];
-    Function temp = func;
+    Function &temp = def_function[func_name];
+    std::vector<std::any> init = temp.initval;
     std::vector<Argument> x = std::any_cast<std::vector<Argument>>(visit(ctx -> trailer()));
     for (int i = 0; i < x.size(); i++) {
       if (x[i].name == "") {
-        temp.initval[x[i].id] = x[i].value;
+        init[x[i].id] = x[i].value;
       } else {
-        temp.initval[temp.position[x[i].name]] = x[i].value;
+        init[temp.position[x[i].name]] = x[i].value;
       }
     }
     for (int i = 0; i < temp.argname.size(); i++) {
-      scope[temp.argname[i]] = temp.initval[i];
+      scope[temp.argname[i]] = init[i];
     }
     variables.push_back(scope);
     auto res = visit(temp.func);
@@ -686,6 +686,7 @@ std::any EvalVisitor::visitReturn_stmt(Python3Parser::Return_stmtContext *ctx) {
   t.Break = 0;
   t.Continue = 0;
   t.Return = 1;
+  t.val = none();
   if (ctx -> testlist()) {
     t.val = visit(ctx -> testlist());
   }
