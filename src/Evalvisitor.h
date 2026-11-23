@@ -51,6 +51,7 @@ private:
   std::any GetVar(std::string name);
   void AssignOnce(Python3Parser::TestlistContext *ctx, std::any exprN);
   void AugassignOnce(Python3Parser::TestlistContext *ctx, std::any exprN, std::string Augassign,  std::vector<std::any> old_val);
+  char EscapeCharacter(char ch);
 public:
   EvalVisitor();
   //文件输入，分别执行每一行
@@ -145,9 +146,8 @@ public:
   //最基本的
   virtual std::any visitAtom(Python3Parser::AtomContext *ctx) override;
 
-  virtual std::any visitFormat_string(Python3Parser::Format_stringContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  //format_string
+  virtual std::any visitFormat_string(Python3Parser::Format_stringContext *ctx) override;
 
   //若干个test，返回一个any或者any的vector
   virtual std::any visitTestlist(Python3Parser::TestlistContext *ctx) override;

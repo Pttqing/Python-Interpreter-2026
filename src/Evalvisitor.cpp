@@ -28,6 +28,7 @@ double EvalVisitor::ChangeToFloat(std::any x) {
   if (std::any_cast<Flow>(&x) != nullptr) {
     return ChangeToFloat(std::any_cast<Flow>(x).val);
   }
+  return 0;
 }
 
 sjtu::int2048 EvalVisitor::ChangeToInt(std::any x) {
@@ -49,6 +50,7 @@ sjtu::int2048 EvalVisitor::ChangeToInt(std::any x) {
   if (std::any_cast<Flow>(&x) != nullptr) {
     return ChangeToInt(std::any_cast<Flow>(x).val);
   }
+  return 0;
 }
 
 bool EvalVisitor::ChangeToBool(std::any x) {
@@ -70,6 +72,7 @@ bool EvalVisitor::ChangeToBool(std::any x) {
   if (std::any_cast<Flow>(&x) != nullptr) {
     return ChangeToBool(std::any_cast<Flow>(x).val);
   }
+  return false;
 }
 
 std::string EvalVisitor::ChangeToStr(std::any x) {
@@ -96,6 +99,7 @@ std::string EvalVisitor::ChangeToStr(std::any x) {
   if (std::any_cast<Flow>(&x) != nullptr) {
     return ChangeToStr(std::any_cast<Flow>(x).val);
   }
+  return "";
 }
 
 std::any EvalVisitor::calc(std::string s, std::any x, std::any y) {
@@ -188,6 +192,7 @@ std::any EvalVisitor::calc(std::string s, std::any x, std::any y) {
   if (s == "!=") {
     return  !std::any_cast<bool>(calc("==", x, y));
   }
+  return std::any();
 }
 
 std::any EvalVisitor::visitFile_input(Python3Parser::File_inputContext *ctx) {
@@ -516,6 +521,21 @@ std::any EvalVisitor::GetVar(std::string name) {
   }
   return std::any();
 }
+char EvalVisitor::EscapeCharacter(char ch) {
+  switch (ch) {
+    case 'n': return '\n';
+    case 't': return '\t';
+    case 'r': return '\r';
+    case 'a': return '\a';
+    case 'b': return '\b';
+    case 'f': return '\f';
+    case 'v': return '\v';
+    case '\\': return '\\';
+    case '\"': return '\"';
+    case '\'': return '\'';
+    default: return ch;
+  }
+}
 
 std::any EvalVisitor::visitAtom(Python3Parser::AtomContext *ctx) {
   // std::cout << "visiting atom : " << ctx -> getText() << "\n";
@@ -556,19 +576,7 @@ std::any EvalVisitor::visitAtom(Python3Parser::AtomContext *ctx) {
       for (int i = 0; i < x.size(); i++) {
         if (x[i] == '\\') {
           char ch = x[i + 1];
-          switch (ch) {
-            case 'n': res += '\n';break;
-            case 't': res += '\t';break;
-            case 'r': res += '\r';break;
-            case 'a': res += '\a';break;
-            case 'b': res += '\b';break;
-            case 'f': res += '\f';break;
-            case 'v': res += '\v';break;
-            case '\\': res += '\\';break;
-            case '\"': res += '\"';break;
-            case '\'': res += '\'';break;
-            default: res += ch;
-          }
+          res += EscapeCharacter(ch);
           i++;
         } else {
           res += x[i];
@@ -733,4 +741,40 @@ std::any EvalVisitor::visitTypedargslist(Python3Parser::TypedargslistContext *ct
 
 std::any EvalVisitor::visitTfpdef(Python3Parser::TfpdefContext *ctx) {
   return ctx -> getText();
+}
+
+std::any EvalVisitor::visitFormat_string(Python3Parser::Format_stringContext *ctx) {
+  std::string res = "";
+  int sz1 = ctx -> FORMAT_STRING_LITERAL().size();
+  int sz2 = ctx -> testlist().size();
+  int pos1 = 0, pos2 = 0;
+  std::string s = ctx -> getText();
+  int pos = 2;
+  while (pos < s.size() - 1) {
+    if (s[pos] == '{' && s[pos + 1] != '{') {
+      std::string temp = ChangeToStr(visit(ctx -> testlist(pos2)));
+      // std::cout << temp << "\n";
+      res += temp;
+      pos += ctx -> testlist(pos2) -> getText().size() + 2;
+      pos2++;
+    } else {
+      std::string temp = ctx -> FORMAT_STRING_LITERAL(pos1) -> getText();
+      for (int i = 0; i < temp.size(); i++) {
+        if (temp[i] == '\\') {
+          char ch = temp[i + 1];
+          res += EscapeCharacter(ch);
+          i++;
+        } else if (temp[i] == '{' || temp[i] == '}'){
+          res += temp[i];
+          i++;
+        } else {
+          res += temp[i];
+        }
+      }
+      pos += ctx -> FORMAT_STRING_LITERAL(pos1) -> getText().size();
+      pos1++;
+    }
+    
+  }
+  return res;
 }
