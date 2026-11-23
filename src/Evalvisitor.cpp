@@ -187,17 +187,78 @@ std::any EvalVisitor::visitSmall_stmt(Python3Parser::Small_stmtContext *ctx) {
   }
 }
 
+void EvalVisitor::SetVar(std::string name, std::any val) {
+  int sz = variables.size();
+  if (variables[sz - 1].find(name) != variables[sz - 1].end()) {
+    variables[sz - 1][name] = val;
+  } else if (variables[0].find(name) != variables[0].end()) {
+    variables[0][name] = val;
+  } else {
+    variables[sz - 1][name] = val;
+  }
+}
+
+void EvalVisitor::AssignOnce(Python3Parser::TestlistContext *ctx, std::any exprN) {
+  if (ctx -> test().size() == 1) {
+    SetVar(ctx -> test(0) -> getText(), exprN);
+    return ;
+  }
+  std::vector<std::any> expr = std::any_cast<std::vector<std::any>>(exprN);
+  for (int i = 0; i < ctx -> test().size(); i++) {
+    SetVar(ctx -> test(i) -> getText(), expr[i]);
+  }
+}
+
+void EvalVisitor::AugassignOnce(Python3Parser::TestlistContext *ctx, std::any exprN, std::string Augassign, std::vector<std::any> old_val) {
+  std::string op;
+  if (Augassign.size() == 3) {
+    op ="//";
+  } else {
+    op = Augassign.substr(0, 1);
+  }
+  if (ctx -> test().size() == 1) {
+    std::any oldval = GetVar(ctx -> test(0) -> getText());
+    SetVar(ctx -> test(0) -> getText(), calc(op, oldval, exprN));
+    return ;
+  }
+  std::vector<std::any> expr = std::any_cast<std::vector<std::any>>(exprN);
+  for (int i = 0; i < ctx -> test().size(); i++) {
+    expr[i] = calc(op, old_val[i], expr[i]);
+  }
+  for (int i = 0; i < ctx -> test().size(); i++) {
+    SetVar(ctx -> test(i) -> getText(), expr[i]);
+  }
+}
+
 std::any EvalVisitor::visitExpr_stmt(Python3Parser::Expr_stmtContext *ctx) {
+  // std::cout << "visiting Expr_stmt : " << ctx -> getText() << "\n";
   auto testlist = ctx -> testlist();
   if (ctx -> augassign()) {
-
+    std::vector<std::any> olds;
+    olds.clear();
+    Python3Parser::TestlistContext *testtodo = testlist[0];
+    for (int i = 0; i < testtodo -> test().size(); i++) {
+      olds.push_back(GetVar(testtodo -> test(i) -> getText()));
+    }
+    std::any exprN = (visit(ctx -> testlist(1)));
+    AugassignOnce(ctx -> testlist(0), exprN, ctx -> augassign() -> getText(), olds);
+    return exprN;
   } else {
-    
-    return visit(ctx->testlist(0));
+    int num = ctx -> ASSIGN().size();
+    if (num == 0) {
+      return visit(ctx -> testlist(0));
+    }
+    // std::cout << num << " testlist: " << testlist[0] -> getText() << " " << testlist[1] -> getText() << "\n";
+    std::any exprN = (visit(ctx -> testlist(num)));
+    for (int i = num - 1; i >= 0; i--) {
+      AssignOnce(testlist[i], exprN);
+    }
+    return exprN;
   }
 }
 
 std::any EvalVisitor::visitTestlist(Python3Parser::TestlistContext *ctx) {
+  // std::cout << "visiting testlist : " << ctx -> getText() << "\n";
   std::vector<Python3Parser::TestContext *> test = ctx -> test();
   if (test.size() == 1) {
     return visit(test[0]);
@@ -381,16 +442,21 @@ std::any EvalVisitor::visitArgument(Python3Parser::ArgumentContext *ctx) {
   }
 }
 
+std::any EvalVisitor::GetVar(std::string name) {
+  int sz = variables.size();
+  if (variables[sz - 1].find(name) != variables[sz - 1].end()) {
+    return variables[sz - 1][name];
+  }
+  if (variables[0].find(name) != variables[0].end()) {
+    return variables[0][name];
+  }
+}
+
 std::any EvalVisitor::visitAtom(Python3Parser::AtomContext *ctx) {
+// std::cout << "visiting atom : " << ctx -> getText() << "\n";
   if (ctx -> NAME()) {
     std::string tar = ctx -> NAME() -> getText();
-    int sz = variables.size();
-    if (variables[sz - 1].find(tar) != variables[sz - 1].end()) {
-      return variables[sz - 1][tar];
-    }
-    if (variables[0].find(tar) != variables[0].end()) {
-      return variables[0][tar];
-    }
+    return GetVar(tar);
   }
   if (ctx -> NUMBER()) {
     std::string name = ctx ->NUMBER() -> getText();
@@ -418,7 +484,6 @@ std::any EvalVisitor::visitAtom(Python3Parser::AtomContext *ctx) {
     return visit(ctx -> test());
   }
   if (!ctx -> STRING().empty()) {
-    // std::cout << "visiting atom : " << ctx -> getText() << "\n";
     std::string res = "";
     for (auto singleSTRING : ctx -> STRING()) {
       std::string x = singleSTRING -> getText();
@@ -445,6 +510,7 @@ std::any EvalVisitor::visitAtom(Python3Parser::AtomContext *ctx) {
         }
       }
     }
+    // std::cout << "finished with return : " << res << "\n";
     return res;
   }
 }
