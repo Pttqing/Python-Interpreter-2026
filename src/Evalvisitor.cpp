@@ -29,6 +29,9 @@ double EvalVisitor::ChangeToFloat(const std::any &x) {
   if (std::any_cast<Flow>(&x) != nullptr) {
     return ChangeToFloat(std::any_cast<Flow>(x).val);
   }
+  if (std::any_cast<double>(&x) != nullptr) {
+    return std::any_cast<double>(x);
+  }
   return 0;
 }
 
