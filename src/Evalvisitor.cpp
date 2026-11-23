@@ -25,6 +25,9 @@ double EvalVisitor::ChangeToFloat(std::any x) {
     double res = std::any_cast<bool>(x);
     return res;
   }
+  if (std::any_cast<Flow>(&x) != nullptr) {
+    return ChangeToFloat(std::any_cast<Flow>(x).val);
+  }
 }
 
 sjtu::int2048 EvalVisitor::ChangeToInt(std::any x) {
@@ -43,6 +46,9 @@ sjtu::int2048 EvalVisitor::ChangeToInt(std::any x) {
   if (std::any_cast<sjtu::int2048>(&x) != nullptr) {
     return std::any_cast<sjtu::int2048>(x);
   }
+  if (std::any_cast<Flow>(&x) != nullptr) {
+    return ChangeToInt(std::any_cast<Flow>(x).val);
+  }
 }
 
 bool EvalVisitor::ChangeToBool(std::any x) {
@@ -60,6 +66,9 @@ bool EvalVisitor::ChangeToBool(std::any x) {
   }
   if (std::any_cast<std::string>(&x) != nullptr) {
     return std::any_cast<std::string>(x) != "";
+  }
+  if (std::any_cast<Flow>(&x) != nullptr) {
+    return ChangeToBool(std::any_cast<Flow>(x).val);
   }
 }
 
@@ -83,6 +92,9 @@ std::string EvalVisitor::ChangeToStr(std::any x) {
   }
   if (std::any_cast<none>(&x) != nullptr) {
     return "None";
+  }
+  if (std::any_cast<Flow>(&x) != nullptr) {
+    return ChangeToStr(std::any_cast<Flow>(x).val);
   }
 }
 
@@ -186,6 +198,7 @@ std::any EvalVisitor::visitFile_input(Python3Parser::File_inputContext *ctx) {
 }
 
 std::any EvalVisitor::visitStmt(Python3Parser::StmtContext *ctx) {
+  // std::cout << "visiting stmt : " << ctx -> getText() << "\n";
   if (ctx -> simple_stmt()) {
     return visit(ctx -> simple_stmt());
   } else if (ctx -> compound_stmt()){
@@ -447,8 +460,12 @@ std::any EvalVisitor::visitAtom_expr(Python3Parser::Atom_exprContext *ctx) {
     variables.push_back(scope);
     auto res = visit(temp.func);
     variables.pop_back();
-    return res;
-
+    //注意返回值，不要泄露
+    if (std::any_cast<Flow>(&res) != nullptr) {
+      return std::any_cast<Flow>(res).val;
+    } else {
+      return none();
+    }
   } else {
     return visit(ctx -> atom());
   }
@@ -708,7 +725,7 @@ std::any EvalVisitor::visitTypedargslist(Python3Parser::TypedargslistContext *ct
     temp.name = std::any_cast<std::string>(visit(ctx -> tfpdef(i)));
     res.push_back(temp);
   }
-  for (int i = ctx -> tfpdef().size(); i >= 0 && j >= 0; i--, j--) {
+  for (int i = ctx -> tfpdef().size() - 1; i >= 0 && j >= 0; i--, j--) {
     res[i].value = visit(ctx -> test(j));
   }
   return res;
