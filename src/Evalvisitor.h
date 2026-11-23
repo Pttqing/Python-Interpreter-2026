@@ -1,4 +1,6 @@
 #pragma once
+#include <string>
+#include <vector>
 #ifndef PYTHON_INTERPRETER_EVALVISITOR_H
 #define PYTHON_INTERPRETER_EVALVISITOR_H
 
@@ -9,13 +11,24 @@
 struct none {
 };
 
+//函数体
+struct Function {
+  std::string funcname;
+  std::vector<std::string> argname;
+  std::vector<std::any> initval; 
+  std::map<std::string, int> position;
+  Python3Parser::SuiteContext *func;
+};
+
 //函数调用时的参数列表
 struct Argument {
   int id = 0;
   std::string name = "";
   std::any value;
+  
 };
 
+//返回的流
 struct Flow {
   bool Continue, Break, Return;
   std::any val;
@@ -26,10 +39,13 @@ class EvalVisitor : public Python3ParserBaseVisitor {
 private:
   //每一层内的变量以及相应的值
   std::vector<std::map<std::string, std::any>> variables;
+  //函数表
+  std::map<std::string, Function> def_function;
+
   double ChangeToFloat(std::any x);
   sjtu::int2048 ChangeToInt(std::any x);
   bool ChangeToBool(std::any x);
-  void PrintOne(std::any x);
+  std::string ChangeToStr(std::any x);
   std::any calc(std::string s, std::any x, std::any y);
   void SetVar(std::string name, std::any val);
   std::any GetVar(std::string name);
@@ -40,21 +56,14 @@ public:
   //文件输入，分别执行每一行
   std::any visitFile_input(Python3Parser::File_inputContext *ctx) override;
 
-  virtual std::any visitFuncdef(Python3Parser::FuncdefContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  //函数定义相关
+  virtual std::any visitFuncdef(Python3Parser::FuncdefContext *ctx) override;
 
-  virtual std::any visitParameters(Python3Parser::ParametersContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  virtual std::any visitParameters(Python3Parser::ParametersContext *ctx) override;
 
-  virtual std::any visitTypedargslist(Python3Parser::TypedargslistContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  virtual std::any visitTypedargslist(Python3Parser::TypedargslistContext *ctx) override;
 
-  virtual std::any visitTfpdef(Python3Parser::TfpdefContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  virtual std::any visitTfpdef(Python3Parser::TfpdefContext *ctx) override;
 
   //运行每一个语句(可能是简单语句或是复杂语句)
   virtual std::any visitStmt(Python3Parser::StmtContext *ctx) override;
@@ -68,7 +77,9 @@ public:
   //表达式语句：testlist + 复合赋值/连等/无
   virtual std::any visitExpr_stmt(Python3Parser::Expr_stmtContext *ctx) override;
 
-  virtual std::any visitAugassign(Python3Parser::AugassignContext *ctx) override;
+  virtual std::any visitAugassign(Python3Parser::AugassignContext *ctx) override {
+    return visitChildren(ctx);
+  }
 
   //流语句
   virtual std::any visitFlow_stmt(Python3Parser::Flow_stmtContext *ctx) override;
@@ -84,11 +95,11 @@ public:
 
   virtual std::any visitIf_stmt(Python3Parser::If_stmtContext *ctx) override;
 
+
   virtual std::any visitWhile_stmt(Python3Parser::While_stmtContext *ctx) override;
 
   virtual std::any visitSuite(Python3Parser::SuiteContext *ctx) override;
   
-
   //访问单个test 即or_test
   virtual std::any visitTest(Python3Parser::TestContext *ctx) override;
 

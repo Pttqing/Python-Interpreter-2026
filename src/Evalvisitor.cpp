@@ -63,6 +63,29 @@ bool EvalVisitor::ChangeToBool(std::any x) {
   }
 }
 
+std::string EvalVisitor::ChangeToStr(std::any x) {
+  if (std::any_cast<std::string>(&x) != nullptr) {
+    return std::any_cast<std::string>(x);
+  }
+  if (std::any_cast<sjtu::int2048>(&x) != nullptr) {
+    std::ostringstream oss;
+    oss << std::any_cast<sjtu::int2048>(x);
+    return oss.str();
+  }
+  if (std::any_cast<double>(&x) != nullptr) {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(6) << std::any_cast<double>(x);
+    return oss.str();
+  }
+  if (std::any_cast<bool>(&x) != nullptr) {
+    bool t = std::any_cast<bool>(x);
+    return (t ? "True" : "False");
+  }
+  if (std::any_cast<none>(&x) != nullptr) {
+    return "None";
+  }
+}
+
 std::any EvalVisitor::calc(std::string s, std::any x, std::any y) {
   if (s == "+") {
     if (std::any_cast<std::string>(&x) != nullptr) {
@@ -376,6 +399,7 @@ std::any EvalVisitor::visitAtom_expr(Python3Parser::Atom_exprContext *ctx) {
   // std::cout << "visiting Atom_expr " << ctx ->getText() << "\n";
   if (ctx -> trailer()) {
     std::string func_name = ctx -> atom() -> getText();
+    //内置函数：
     if (func_name == "print") {
       std::vector<Argument> x = std::any_cast<std::vector<Argument>>(visit(ctx -> trailer()));
       // std::cout << "finished trailer" << x.size() << "\n";
@@ -384,32 +408,49 @@ std::any EvalVisitor::visitAtom_expr(Python3Parser::Atom_exprContext *ctx) {
         if (i != 0) {
           std::cout << " ";
         }
-        PrintOne(arg.value);
+        std::cout << ChangeToStr(arg.value);
       }
       std::cout << "\n";
       return std::any();
     }
+    if (func_name == "int") {
+      std::vector<Argument> x = std::any_cast<std::vector<Argument>>(visit(ctx -> trailer()));
+      return ChangeToInt(x[0].value);
+    }
+    if (func_name == "float") {
+      std::vector<Argument> x = std::any_cast<std::vector<Argument>>(visit(ctx -> trailer()));
+      return ChangeToFloat(x[0].value);
+    }
+    if (func_name == "str") {
+      std::vector<Argument> x = std::any_cast<std::vector<Argument>>(visit(ctx -> trailer()));
+      return ChangeToStr(x[0].value);
+    }
+    if (func_name == "bool") {
+      std::vector<Argument> x = std::any_cast<std::vector<Argument>>(visit(ctx -> trailer()));
+      return ChangeToBool(x[0].value);
+    }
+    //自定义函数
+    std::map<std::string, std::any> scope;
+    Function func = def_function[func_name];
+    Function temp = func;
+    std::vector<Argument> x = std::any_cast<std::vector<Argument>>(visit(ctx -> trailer()));
+    for (int i = 0; i < x.size(); i++) {
+      if (x[i].name == "") {
+        temp.initval[x[i].id] = x[i].value;
+      } else {
+        temp.initval[temp.position[x[i].name]] = x[i].value;
+      }
+    }
+    for (int i = 0; i < temp.argname.size(); i++) {
+      scope[temp.argname[i]] = temp.initval[i];
+    }
+    variables.push_back(scope);
+    auto res = visit(temp.func);
+    variables.pop_back();
+    return res;
+
   } else {
     return visit(ctx -> atom());
-  }
-}
-
-void EvalVisitor::PrintOne(std::any x) {
-  if (std::any_cast<std::string>(&x) != nullptr) {
-    std::cout << std::any_cast<std::string>(x);
-  }
-  if (std::any_cast<sjtu::int2048>(&x) != nullptr) {
-    std::cout << std::any_cast<sjtu::int2048>(x);
-  }
-  if (std::any_cast<double>(&x) != nullptr) {
-    std::cout << std::fixed << std::setprecision(6) << std::any_cast<double>(x);
-  }
-  if (std::any_cast<bool>(&x) != nullptr) {
-    bool t = std::any_cast<bool>(x);
-    std::cout << (t ? "True" : "False");
-  }
-  if (std::any_cast<none>(&x) != nullptr) {
-    std::cout << "None";
   }
 }
 
@@ -456,10 +497,11 @@ std::any EvalVisitor::GetVar(std::string name) {
   if (variables[0].find(name) != variables[0].end()) {
     return variables[0][name];
   }
+  return std::any();
 }
 
 std::any EvalVisitor::visitAtom(Python3Parser::AtomContext *ctx) {
-// std::cout << "visiting atom : " << ctx -> getText() << "\n";
+  // std::cout << "visiting atom : " << ctx -> getText() << "\n";
   if (ctx -> NAME()) {
     std::string tar = ctx -> NAME() -> getText();
     return GetVar(tar);
@@ -519,6 +561,7 @@ std::any EvalVisitor::visitAtom(Python3Parser::AtomContext *ctx) {
     // std::cout << "finished with return : " << res << "\n";
     return res;
   }
+  return std::any();
 }
 
 std::any EvalVisitor::visitCompound_stmt(Python3Parser::Compound_stmtContext *ctx) {
@@ -531,6 +574,7 @@ std::any EvalVisitor::visitCompound_stmt(Python3Parser::Compound_stmtContext *ct
   if (ctx -> funcdef()) {
     return visit(ctx -> funcdef());
   }
+  return std::any();
 }
 
 std::any EvalVisitor::visitIf_stmt(Python3Parser::If_stmtContext *ctx) {
@@ -542,6 +586,7 @@ std::any EvalVisitor::visitIf_stmt(Python3Parser::If_stmtContext *ctx) {
   if (ctx -> ELSE()) {
     return visit(ctx -> suite(ctx -> test().size()));
   }
+  return std::any();
 }
 
 std::any EvalVisitor::visitWhile_stmt(Python3Parser::While_stmtContext *ctx) {
@@ -565,11 +610,12 @@ std::any EvalVisitor::visitWhile_stmt(Python3Parser::While_stmtContext *ctx) {
 }
 
 std::any EvalVisitor::visitSuite(Python3Parser::SuiteContext *ctx) {
+  // std::cout << "visiting suite" << ctx -> getText() << "\n";
   if (ctx -> simple_stmt()) {
     return visit(ctx -> simple_stmt());
   } else {
     for (int i = 0; i < ctx -> stmt().size(); i++) {
-      // std::cout << "visiting suite" << ctx -> stmt(i) -> getText() << "\n";
+      
       auto x = visit(ctx -> stmt(i));
       // std::cout << "finishing " << ctx -> getText() << "\n";
       if (std::any_cast<Flow>(&x) != nullptr) {
@@ -577,7 +623,7 @@ std::any EvalVisitor::visitSuite(Python3Parser::SuiteContext *ctx) {
         return t;
       }
     }
-    return std::any();
+    return none();
   }
 }
 
@@ -591,6 +637,7 @@ std::any EvalVisitor::visitFlow_stmt(Python3Parser::Flow_stmtContext *ctx) {
   if (ctx -> return_stmt()) {
     return visit(ctx -> return_stmt());
   }
+  return std::any();
 }
 
 std::any EvalVisitor::visitBreak_stmt(Python3Parser::Break_stmtContext *ctx) {
@@ -617,6 +664,56 @@ std::any EvalVisitor::visitReturn_stmt(Python3Parser::Return_stmtContext *ctx) {
   if (ctx -> testlist()) {
     t.val = visit(ctx -> testlist());
   }
-  
   return t;
+}
+
+std::any EvalVisitor::visitFuncdef(Python3Parser::FuncdefContext *ctx) {
+  // std::cout << "visiting Funcdef" << ctx -> getText() << "\n";
+  Function t;
+  t.funcname = ctx -> NAME() -> getText();
+  t.argname.clear();
+  t.initval.clear();
+  t.position.clear();
+  std::vector<Argument> arg = std::any_cast<std::vector<Argument>> (visit(ctx -> parameters()));
+  // std::cout << "finished arg get\n";
+  for (int i = 0; i < arg.size(); i++) {
+    t.argname.push_back(arg[i].name);
+    t.initval.push_back(arg[i].value);
+    t.position[arg[i].name] = i;
+  }
+  t.func = ctx -> suite();
+  def_function[t.funcname] = t;
+  return std::any();
+}
+
+std::any EvalVisitor::visitParameters(Python3Parser::ParametersContext *ctx) {
+  // std::cout << "visiting Para" << ctx -> getText() << "\n";
+  if (ctx -> typedargslist()) {
+    return visit(ctx -> typedargslist());
+  } else {
+    std::vector<Argument> temp;
+    temp.clear();
+    return temp;
+  }
+}
+
+std::any EvalVisitor::visitTypedargslist(Python3Parser::TypedargslistContext *ctx) {
+  // std::cout << "visiting type..." << ctx -> getText() << "\n";
+  int j = ctx -> test().size();
+  j -= 1;
+  std::vector<Argument> res;
+  res.clear();
+  for (int i = 0; i < ctx -> tfpdef().size(); i++) {
+    Argument temp;
+    temp.name = std::any_cast<std::string>(visit(ctx -> tfpdef(i)));
+    res.push_back(temp);
+  }
+  for (int i = ctx -> tfpdef().size(); i >= 0 && j >= 0; i--, j--) {
+    res[i].value = visit(ctx -> test(j));
+  }
+  return res;
+}
+
+std::any EvalVisitor::visitTfpdef(Python3Parser::TfpdefContext *ctx) {
+  return ctx -> getText();
 }
