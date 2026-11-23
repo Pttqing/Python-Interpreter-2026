@@ -19,12 +19,14 @@ struct Argument {
 class EvalVisitor : public Python3ParserBaseVisitor {
 	// TODO: override all methods of Python3ParserBaseVisitor
 private:
+  EvalVisitor();
   //每一层内的变量以及相应的值
   std::vector<std::map<std::string, std::any>> variables;
-  std::any ChangeToFloat(std::any x);
-  std::any ChangeToInt(std::any x);
+  double ChangeToFloat(std::any x);
+  sjtu::int2048 ChangeToInt(std::any x);
+  bool ChangeToBool(std::any x);
   void PrintOne(std::any x);
-
+  std::any calc(std::string s, std::any x, std::any y);
 public:
   //文件输入，分别执行每一行
   std::any visitFile_input(Python3Parser::File_inputContext *ctx) override;

@@ -5,33 +5,153 @@
 #include <string>
 #include <vector>
 #include <iomanip>
+#include <map>
 
-std::any EvalVisitor::ChangeToFloat(std::any x) {
-  if (std::any_cast<std::string>(&x) != nullptr) {
-    std::string a = std::any_cast<std::string>(x);
-    double b = 0;
-    int sz = a.size(), cnt = 0;
-    for (int i = sz - 1; i >= 0; i--) {
-      if (a[i] != '.') {
-        b = b + a[i] - '0';
-        b *= 10;
-        cnt ++;
-      } else {
-        while (cnt--) {
-          b /= 10;
-        }
-      }
-      
-    }
-    return b;
-  }
-
+EvalVisitor::EvalVisitor() {
+  std::map<std::string, std::any> mp;
+  mp.clear();
+  variables.push_back(mp);
 }
 
-std::any EvalVisitor::ChangeToInt(std::any x) {
+double EvalVisitor::ChangeToFloat(std::any x) {
+  if (std::any_cast<std::string>(&x) != nullptr) {
+    return std::stod(std::any_cast<std::string>(x));
+  }
+  if (std::any_cast<sjtu::int2048>(&x) != nullptr) {
+    double res = (std::any_cast<sjtu::int2048>(x).ChangeToDouble());
+    return res;
+  }
+  if (std::any_cast<bool>(&x) != nullptr) {
+    double res = std::any_cast<bool>(x);
+    return res;
+  }
+}
+
+sjtu::int2048 EvalVisitor::ChangeToInt(std::any x) {
   if (std::any_cast<std::string>(&x) != nullptr) {
     sjtu::int2048 res(std::any_cast<std::string>(x));
     return res;
+  }
+  if (std::any_cast<bool>(&x) != nullptr) {
+    sjtu::int2048 res(std::any_cast<bool>(x));
+    return res;
+  }
+  if (std::any_cast<double>(&x) != nullptr) {
+    sjtu::int2048 res((long long)std::any_cast<double>(x));
+    return res;
+  }
+  if (std::any_cast<sjtu::int2048>(&x) != nullptr) {
+    return std::any_cast<sjtu::int2048>(x);
+  }
+}
+
+bool EvalVisitor::ChangeToBool(std::any x) {
+  if (std::any_cast<none>(&x) != nullptr) {
+    return false;
+  }
+  if (std::any_cast<bool>(&x) != nullptr) {
+    return std::any_cast<bool>(x);
+  }
+  if (std::any_cast<sjtu::int2048>(&x) != nullptr) {
+    return std::any_cast<sjtu::int2048>(x) != 0;
+  }
+  if (std::any_cast<double>(&x) != nullptr) {
+    return std::any_cast<double>(x) != 0;
+  }
+  if (std::any_cast<std::string>(&x) != nullptr) {
+    return std::any_cast<std::string>(x) != "";
+  }
+}
+
+std::any EvalVisitor::calc(std::string s, std::any x, std::any y) {
+  if (s == "+") {
+    if (std::any_cast<std::string>(&x) != nullptr) {
+      return std::any_cast<std::string>(x) + std::any_cast<std::string>(y);
+    }
+    if (std::any_cast<double>(&x) != nullptr || std::any_cast<double>(&y) != nullptr) {
+      return ChangeToFloat(x) + ChangeToFloat(y);
+    }
+    return ChangeToInt(x) + ChangeToInt(y);
+  }
+  if (s == "-") {
+    if (std::any_cast<double>(&x) != nullptr || std::any_cast<double>(&y) != nullptr) {
+      return ChangeToFloat(x) - ChangeToFloat(y);
+    }
+    return ChangeToInt(x) - ChangeToInt(y);
+  }
+  if (s == "*") {
+    if (std::any_cast<std::string>(&x) != nullptr || std::any_cast<std::string>(&y) != nullptr) {
+      if (std::any_cast<std::string>(&y) != nullptr) {
+        swap(x, y);
+      }
+      sjtu::int2048 t = ChangeToInt(y);
+      std::string res = "", a = std::any_cast<std::string>(x);
+      while (t > 0) {
+        res += a;
+        t -= 1;
+      }
+      return res;
+    }
+    if (std::any_cast<double>(&x) != nullptr || std::any_cast<double>(&y) != nullptr) {
+      return ChangeToFloat(x) * ChangeToFloat(y);
+    }
+    return ChangeToInt(x) * ChangeToInt(y);
+  }
+  if (s == "/") {
+    return ChangeToFloat(x) / ChangeToFloat(y);
+  }
+  if (s == "//") {
+    if (std::any_cast<double>(&x) != nullptr || std::any_cast<double>(&y) != nullptr) {
+      double xfloat = ChangeToFloat(x), yfloat = ChangeToFloat(y);
+      return floor(xfloat / yfloat);
+    }
+    return ChangeToInt(x) / ChangeToInt(y);
+  }
+  if (s == "%") {
+    if (std::any_cast<double>(&x) != nullptr || std::any_cast<double>(&y) != nullptr) {
+      double xfloat = ChangeToFloat(x), yfloat = ChangeToFloat(y);
+      return xfloat - yfloat * floor(xfloat / yfloat);
+    }
+    return ChangeToInt(x) % ChangeToInt(y);
+  }
+  if (s == "<") {
+    if (std::any_cast<std::string>(&x) != nullptr && std::any_cast<std::string>(&y) != nullptr) {
+      return std::any_cast<std::string>(x) < std::any_cast<std::string>(y);
+    }
+    if (std::any_cast<double>(&x) != nullptr || std::any_cast<double>(&y) != nullptr) {
+      return ChangeToFloat(x) < ChangeToFloat(y);
+    }
+    return ChangeToInt(x) < ChangeToInt(y);
+  }
+  if (s == ">") {
+    return calc("<", y, x);
+  }
+  if (s == "<=") {
+    return !std::any_cast<bool>(calc(">", x, y));
+  }
+  if (s == ">=") {
+    return !std::any_cast<bool>(calc("<", x, y));
+  }
+  if (s == "==") {
+    if (std::any_cast<std::string>(&x) != nullptr && std::any_cast<std::string>(&y) != nullptr) {
+      return std::any_cast<std::string>(x) == std::any_cast<std::string>(y);
+    }
+    if (std::any_cast<std::string>(&x) != nullptr || std::any_cast<std::string>(&y) != nullptr) {
+      return false;
+    }
+    if (std::any_cast<none>(&x) != nullptr && std::any_cast<none>(&y) != nullptr) {
+      return true;
+    }
+    if (std::any_cast<none>(&x) != nullptr || std::any_cast<none>(&y) != nullptr) {
+      return false;
+    }
+    if (std::any_cast<double>(&x) != nullptr || std::any_cast<double>(&y) != nullptr) {
+      return ChangeToFloat(x) == ChangeToFloat(y);
+    }
+    return ChangeToInt(x) == ChangeToInt(y);
+  }
+  if (s == "!=") {
+    return  !std::any_cast<bool>(calc("==", x, y));
   }
 }
 
@@ -72,6 +192,7 @@ std::any EvalVisitor::visitExpr_stmt(Python3Parser::Expr_stmtContext *ctx) {
   if (ctx -> augassign()) {
 
   } else {
+    
     return visit(ctx->testlist(0));
   }
 }
@@ -97,9 +218,13 @@ std::any EvalVisitor::visitOr_test(Python3Parser::Or_testContext *ctx) {
   if (and_test.size() == 1) {
     return visit(and_test[0]);
   }
-  bool res = 0;
-
-  return res;
+  for (int i = 0; i < and_test.size(); i++) {
+    bool x = ChangeToBool(visit(and_test[i]));
+    if (x) {
+      return true;
+    }
+  }
+  return false;
 }
 
 std::any EvalVisitor::visitAnd_test(Python3Parser::And_testContext *ctx) {
@@ -107,14 +232,18 @@ std::any EvalVisitor::visitAnd_test(Python3Parser::And_testContext *ctx) {
   if (not_test.size() == 1) {
     return visit(not_test[0]);
   }
-  bool res = 0;
-
-  return res;
+  for (int i = 0; i < not_test.size(); i++) {
+    bool x = ChangeToBool(visit(not_test[i]));
+    if (!x) {
+      return false;
+    }
+  }
+  return true;
 }
 
 std::any EvalVisitor::visitNot_test(Python3Parser::Not_testContext *ctx) {
   if(ctx -> NOT()) {
-
+    return !ChangeToBool(visit(ctx -> not_test()));
   } else {
     return visit(ctx -> comparison());
   }
@@ -126,7 +255,16 @@ std::any EvalVisitor::visitComparison(Python3Parser::ComparisonContext *ctx) {
   if (comp_op.size() == 0) {
     return visit(arith_expr[0]);
   }
-
+  std::any l = visit(arith_expr[0]);
+  for (int i = 0; i < comp_op.size(); i++) {
+    std::any r = visit(arith_expr[i + 1]);
+    bool res = std::any_cast<bool>(calc(comp_op[i]->getText(), l, r));
+    if (!res) {
+      return false;
+    }
+    l = r;
+  }
+  return true;
 }
 
 std::any EvalVisitor::visitArith_expr(Python3Parser::Arith_exprContext *ctx) {
@@ -135,7 +273,12 @@ std::any EvalVisitor::visitArith_expr(Python3Parser::Arith_exprContext *ctx) {
   if (addorsub_op.size() == 0) {
     return visit(term[0]);
   }
-
+  std::any res = visit(term[0]);
+  for (int i = 0; i < addorsub_op.size(); i++) {
+    std::any r = visit(term[i + 1]);
+    res = calc(addorsub_op[i]->getText(), res, r);
+  }
+  return res;
 }
 
 std::any EvalVisitor::visitTerm(Python3Parser::TermContext *ctx) {
@@ -144,14 +287,19 @@ std::any EvalVisitor::visitTerm(Python3Parser::TermContext *ctx) {
   if (muldivmod.size() == 0) {
     return visit(factor[0]);
   }
-
+  std::any res = visit(factor[0]);
+  for (int i = 0; i < muldivmod.size(); i++) {
+    std::any r = visit(factor[i + 1]);
+    res = calc(muldivmod[i]->getText(), res, r);
+  }
+  return res;
 }
 
 std::any EvalVisitor::visitFactor(Python3Parser::FactorContext *ctx) {
   if (ctx ->ADD()) {
-
+    return visit(ctx -> factor());
   } else if (ctx -> MINUS()) {
-
+    return calc("-", (sjtu::int2048)0, visit(ctx -> factor()));
   } else {
     return visit(ctx -> atom_expr());
   }
@@ -187,20 +335,22 @@ void EvalVisitor::PrintOne(std::any x) {
     std::cout << std::any_cast<sjtu::int2048>(x);
   }
   if (std::any_cast<double>(&x) != nullptr) {
-    std::cout << std::fixed << std::setprecision(6) << std::any_cast<std::string>(x);
+    std::cout << std::fixed << std::setprecision(6) << std::any_cast<double>(x);
   }
   if (std::any_cast<bool>(&x) != nullptr) {
     bool t = std::any_cast<bool>(x);
-    std::cout << (t ? "TRUE" : "FALSE");
+    std::cout << (t ? "True" : "False");
   }
   if (std::any_cast<none>(&x) != nullptr) {
-    std::cout << "NONE";
+    std::cout << "None";
   }
 }
 
 std::any EvalVisitor::visitTrailer(Python3Parser::TrailerContext *ctx) {
   if (ctx -> arglist()) {
     return visit(ctx -> arglist());
+  } else {
+    return std::vector<Argument>{};
   }
 }
 
@@ -220,7 +370,9 @@ std::any EvalVisitor::visitArglist(Python3Parser::ArglistContext *ctx) {
 std::any EvalVisitor::visitArgument(Python3Parser::ArgumentContext *ctx) {
   Argument arg;
   if (ctx -> ASSIGN()) {
-    
+    arg.name = ctx -> test(0) -> getText();
+    arg.value = visit(ctx -> test(1));
+    return arg;
   } else {
     // std::cout << "visiting Argument " << ctx -> getText() << "\n";
     arg.name = "";
@@ -231,7 +383,14 @@ std::any EvalVisitor::visitArgument(Python3Parser::ArgumentContext *ctx) {
 
 std::any EvalVisitor::visitAtom(Python3Parser::AtomContext *ctx) {
   if (ctx -> NAME()) {
-    return ctx -> NAME() -> getText();
+    std::string tar = ctx -> NAME() -> getText();
+    int sz = variables.size();
+    if (variables[sz - 1].find(tar) != variables[sz - 1].end()) {
+      return variables[sz - 1][tar];
+    }
+    if (variables[0].find(tar) != variables[0].end()) {
+      return variables[0][tar];
+    }
   }
   if (ctx -> NUMBER()) {
     std::string name = ctx ->NUMBER() -> getText();
@@ -276,6 +435,9 @@ std::any EvalVisitor::visitAtom(Python3Parser::AtomContext *ctx) {
             case 'f': res += '\f';break;
             case 'v': res += '\v';break;
             case '\\': res += '\\';break;
+            case '\"': res += '\"';break;
+            case '\'': res += '\'';break;
+            default: res += ch;
           }
           i++;
         } else {

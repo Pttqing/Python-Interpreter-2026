@@ -38,7 +38,7 @@ public:
   virtual std::any visitStmt(Python3Parser::StmtContext *ctx) override {
     return visitChildren(ctx);
   }
-
+  
   virtual std::any visitSimple_stmt(Python3Parser::Simple_stmtContext *ctx) override {
     return visitChildren(ctx);
   }

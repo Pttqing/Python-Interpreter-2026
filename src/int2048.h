@@ -38,6 +38,9 @@ public:
   // Integer1
   // ===================================
 
+  //转化为double类型
+  double ChangeToDouble() const;
+
   // 读入一个大整数
   void read(const std::string &);
   // 输出储存的大整数，无需换行

@@ -86,6 +86,19 @@ void int2048::print() {
         std::cout << val[i];
     }
 }
+
+double int2048::ChangeToDouble() const {
+    double res = 0;
+    long long base = 1;
+    for (int i = 0; i < val.size(); i++) {
+        res += val[i] * base;
+        base *= BASE;
+    }
+    if (sign) {
+        res *= -1;
+    }
+    return res;
+}
 int2048 &int2048::add(const int2048 &t) {
     if (sign && t.sign || !sign && !t.sign) {
         int l = val.size(), r = t.val.size();
