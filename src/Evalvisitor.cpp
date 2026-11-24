@@ -5,11 +5,10 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <iomanip>
 #include <map>
 
 EvalVisitor::EvalVisitor() {
-  std::map<std::string, std::any> mp;
+  std::unordered_map<std::string, std::any> mp;
   mp.clear();
   variables.push_back(mp);
   std::ios::sync_with_stdio(false);
@@ -90,7 +89,7 @@ std::string EvalVisitor::ChangeToStr(const std::any &x) {
     return oss.str();
   }
   if (std::any_cast<double>(&x) != nullptr) {
-    return std::to_string(any_cast<double>(x));
+    return std::to_string(std::any_cast<double>(x));
   }
   if (std::any_cast<bool>(&x) != nullptr) {
     bool t = std::any_cast<bool>(x);
@@ -251,13 +250,14 @@ void EvalVisitor::SetVar(const std::string &name, const std::any &val) {
 }
 
 void EvalVisitor::AssignOnce(Python3Parser::TestlistContext *ctx, const std::any &exprN) {
-  if (ctx -> test().size() == 1) {
-    SetVar(ctx -> test(0) -> getText(), exprN);
+  auto test = ctx -> test();
+  if (test.size() == 1) {
+    SetVar(test[0] -> getText(), exprN);
     return ;
   }
   std::vector<std::any> expr = std::any_cast<std::vector<std::any>>(exprN);
-  for (int i = 0; i < ctx -> test().size(); i++) {
-    SetVar(ctx -> test(i) -> getText(), expr[i]);
+  for (int i = 0; i < test.size(); i++) {
+    SetVar(test[i] -> getText(), expr[i]);
   }
 }
 
@@ -269,19 +269,20 @@ void EvalVisitor::AugassignOnce(Python3Parser::TestlistContext *ctx, const std::
     op = Augassign.substr(0, 1);
   }
   // std::cout << "doing Augassign Once : " << ctx -> getText() << " " << op << " " << Augassign << "\n";
-  if (ctx -> test().size() == 1) {
+  auto test = ctx -> test();
+  if (test.size() == 1) {
     // std::cout << std::any_cast<sjtu::int2048>(old_val[0]) << " " << std::any_cast<sjtu::int2048>(exprN) << "\n";
     std::any new_val = calc(op, old_val[0], exprN);
-    SetVar(ctx -> test(0) -> getText(), new_val);
+    SetVar(test[0] -> getText(), new_val);
     // std::cout <<"finished\n";
     return ;
   }
   std::vector<std::any> expr = std::any_cast<std::vector<std::any>>(exprN);
-  for (int i = 0; i < ctx -> test().size(); i++) {
+  for (int i = 0; i < test.size(); i++) {
     expr[i] = calc(op, old_val[i], expr[i]);
   }
-  for (int i = 0; i < ctx -> test().size(); i++) {
-    SetVar(ctx -> test(i) -> getText(), expr[i]);
+  for (int i = 0; i < test.size(); i++) {
+    SetVar(test[i] -> getText(), expr[i]);
   }
 }
 
@@ -295,17 +296,17 @@ std::any EvalVisitor::visitExpr_stmt(Python3Parser::Expr_stmtContext *ctx) {
     for (int i = 0; i < testtodo -> test().size(); i++) {
       olds.push_back(GetVar(testtodo -> test(i) -> getText()));
     }
-    std::any exprN = (visit(ctx -> testlist(1)));
-    AugassignOnce(ctx -> testlist(0), exprN, ctx -> augassign() -> getText(), olds);
+    std::any exprN = (visit(testlist[1]));
+    AugassignOnce(testlist[0], exprN, ctx -> augassign() -> getText(), olds);
     // std::cout << "finished visiting : " << ctx -> getText() << "\n";
     return std::any();
   } else {
     int num = ctx -> ASSIGN().size();
     if (num == 0) {
-      return visit(ctx -> testlist(0));
+      return visit(testlist[0]);
     }
     // std::cout << num << " testlist: " << testlist[0] -> getText() << " " << testlist[1] -> getText() << "\n";
-    std::any exprN = (visit(ctx -> testlist(num)));
+    std::any exprN = (visit(testlist[num]));
     for (int i = num - 1; i >= 0; i--) {
       AssignOnce(testlist[i], exprN);
     }
