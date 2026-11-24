@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <unordered_map>
 #include <vector>
 #ifndef PYTHON_INTERPRETER_EVALVISITOR_H
 #define PYTHON_INTERPRETER_EVALVISITOR_H
@@ -38,9 +39,9 @@ class EvalVisitor : public Python3ParserBaseVisitor {
 	// TODO: override all methods of Python3ParserBaseVisitor
 private:
   //每一层内的变量以及相应的值
-  std::vector<std::map<std::string, std::any>> variables;
+  std::vector<std::unordered_map<std::string, std::any>> variables;
   //函数表
-  std::map<std::string, Function> def_function;
+  std::unordered_map<std::string, Function> def_function;
 
   double ChangeToFloat(const std::any &x);
   sjtu::int2048 ChangeToInt(const std::any &x);

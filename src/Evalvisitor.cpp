@@ -3,6 +3,7 @@
 #include "int2048.h"
 #include <any>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <iomanip>
 #include <map>
@@ -89,9 +90,7 @@ std::string EvalVisitor::ChangeToStr(const std::any &x) {
     return oss.str();
   }
   if (std::any_cast<double>(&x) != nullptr) {
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(6) << std::any_cast<double>(x);
-    return oss.str();
+    return std::to_string(any_cast<double>(x));
   }
   if (std::any_cast<bool>(&x) != nullptr) {
     bool t = std::any_cast<bool>(x);
@@ -459,7 +458,7 @@ std::any EvalVisitor::visitAtom_expr(Python3Parser::Atom_exprContext *ctx) {
       return ChangeToBool(x[0].value);
     }
     //自定义函数
-    std::map<std::string, std::any> scope;
+    std::unordered_map<std::string, std::any> scope;
     Function &temp = def_function[func_name];
     std::vector<std::any> init = temp.initval;
     std::vector<Argument> x = std::any_cast<std::vector<Argument>>(visit(ctx -> trailer()));
