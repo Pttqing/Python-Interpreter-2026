@@ -84,9 +84,7 @@ std::string EvalVisitor::ChangeToStr(const std::any &x) {
     return std::any_cast<std::string>(x);
   }
   if (std::any_cast<sjtu::int2048>(&x) != nullptr) {
-    std::ostringstream oss;
-    oss << std::any_cast<sjtu::int2048>(x);
-    return oss.str();
+    return std::any_cast<sjtu::int2048>(x).ChangeToString();
   }
   if (std::any_cast<double>(&x) != nullptr) {
     return std::to_string(std::any_cast<double>(x));
@@ -614,13 +612,14 @@ std::any EvalVisitor::visitCompound_stmt(Python3Parser::Compound_stmtContext *ct
 }
 
 std::any EvalVisitor::visitIf_stmt(Python3Parser::If_stmtContext *ctx) {
-  for (int i = 0; i < ctx -> test().size(); i++) {
-    if (ChangeToBool(visit(ctx -> test(i)))) {
+  auto test = ctx -> test();
+  for (int i = 0; i < test.size(); i++) {
+    if (ChangeToBool(visit(test[i]))) {
       return visit(ctx -> suite(i));
     }
   }
   if (ctx -> ELSE()) {
-    return visit(ctx -> suite(ctx -> test().size()));
+    return visit(ctx -> suite(test.size()));
   }
   return std::any();
 }
@@ -651,7 +650,6 @@ std::any EvalVisitor::visitSuite(Python3Parser::SuiteContext *ctx) {
     return visit(ctx -> simple_stmt());
   } else {
     for (int i = 0; i < ctx -> stmt().size(); i++) {
-      
       auto x = visit(ctx -> stmt(i));
       // std::cout << "finishing " << ctx -> getText() << "\n";
       if (std::any_cast<Flow>(&x) != nullptr) {

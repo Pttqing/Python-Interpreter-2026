@@ -1,4 +1,5 @@
 #include "int2048.h"
+#include <string>
 
 namespace sjtu {
 
@@ -85,6 +86,25 @@ void int2048::print() {
         }
         std::cout << val[i];
     }
+}
+std::string int2048::ChangeToString() const {
+    std::string res = "";
+    if (sign) {
+        if (!(val.size() == 1 && val[0] == 0)) {
+            res.push_back('-');
+        }
+    }
+    for (int i = val.size() - 1; i >= 0; i--) {
+        if (i != val.size() - 1) {
+            for (int j = BASE / 10; j >= 10; j /= 10) {
+                if (val[i] / j == 0) {
+                    res.push_back('0');
+                }
+            }
+        }
+        res += std::to_string(val[i]);
+    }
+    return res;
 }
 
 double int2048::ChangeToDouble() const {

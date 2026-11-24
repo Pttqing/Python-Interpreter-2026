@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #ifndef SJTU_BIGINTEGER
 #define SJTU_BIGINTEGER
 
@@ -40,6 +41,8 @@ public:
 
   //转化为double类型
   double ChangeToDouble() const;
+  //转为string
+  std::string ChangeToString() const;
 
   // 读入一个大整数
   void read(const std::string &);
